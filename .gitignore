@@ -1,2 +1,5 @@
 outputs/
 __pycache__/
+.pixi/
+.ruff_cache/
+train_pmf.py
