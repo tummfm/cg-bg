@@ -15,7 +15,7 @@
 
 ## 📖 Overview
 
-This repository provides a codebase for a flow-based **Boltzmann Generator (BG)** specifically generalized for **Coarse-Grained (CG)** representations. By leveraging Conditional Flow Matching and [Enhanced Sampling Force Matching](https://github.com/tummfm/biased-force-matching), this method enables exact equilibrium sampling and reweighting for CG molecular systems.
+This repository provides the official implementation of **Coarse-Grained Boltzmann Generators (CG-BGs)**. Unlike traditional BGs that operate in all-atom space, CG-BGs act directly in a **coarse-grained coordinate space**. By leveraging Conditional Flow Matching and [Enhanced Sampling Force Matching](https://github.com/tummfm/biased-force-matching), this method enables exact equilibrium sampling and reweighting for CG molecular systems.
 
 ## 🚀 Tutorial
 
@@ -56,7 +56,7 @@ All configurations are managed by [hydra-zen](https://github.com/mit-ll-responsi
 pixi run <task_name> device=<gpu_id> stage=234 hydra.run.dir=<output_dir>
 ```
 ## Citation
-If you use ``Coarse-Grained Boltzmann Generators`` please cite:
+If you use ``CG-BGs`` please cite:
 ```bash
 @misc{chen2026coarsegrainedboltzmanngenerators,
       title={Coarse-Grained Boltzmann Generators}, 
