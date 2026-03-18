@@ -52,7 +52,7 @@ def sample(
         features=features,
         rng=rng,
     )
-    samples = {"R": x, "logp": logp, "kT": dataset.kT}
+    samples = {"R": x, "logp": logp, "kT": jnp.broadcast_to(dataset.kT, (x.shape[0],))}
 
     species = getattr(dataset, "species", None)
     if species is not None:
@@ -76,7 +76,7 @@ def reweight(
 ) -> dict:
 
     samples = raw.copy()
-    kT = samples["kT"]
+    kT = samples["kT"][0]
     logp = samples["logp"]
     samples["U"] = jnp.zeros((samples["R"].shape[0],))
     if "box" in raw:

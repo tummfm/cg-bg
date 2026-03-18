@@ -67,6 +67,7 @@ def make_diffrax_solver(method: str):
     else:
         raise ValueError(f"Unknown diffrax solver: {method}")
 
+@eqx.filter_jit
 def batched_sampler(
     dt0: float,
     params: FrozenDict,
