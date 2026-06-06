@@ -96,15 +96,6 @@ To use a different dataset repo, set `HF_REPO_ID` in `.env`:
 HF_REPO_ID="your-username/your-dataset"
 ```
 
-## Weights & Biases
-
-Training loss / learning rate, evaluation metrics, and plots are logged to wandb.
-Configure via the `wandb` group, or disable logging entirely:
-
-```bash
-pixi run <task_name> wandb.project=my-project wandb.mode=disabled
-```
-
 ## Citation
 
 If you use CG-BGs, please cite:
