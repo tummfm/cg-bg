@@ -163,4 +163,3 @@ def scale_dataset(dataset, scale_R, scale_U, fractional=True):
     dataset['F'] *= scale_F
 
     return dataset
-

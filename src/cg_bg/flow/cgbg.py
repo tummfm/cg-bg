@@ -1,15 +1,13 @@
-from typing import Any, Callable, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
 from flax.core import FrozenDict
-from hydra_zen.typing import Partial
-from torch.utils.data import DataLoader, Dataset
-from tqdm import tqdm
+from torch.utils.data import DataLoader
 
 from cg_bg.flow.ema import EMATrainState
-from cg_bg.flow.plot import aldp_plots, mb_plots
 from cg_bg.flow.train_utils import plot_train_loss, train_step
+from cg_bg.utils import get_progress
 
 
 def train(
@@ -19,18 +17,19 @@ def train(
 ) -> Tuple[EMATrainState, jnp.ndarray]:
 
     epoch_losses = []
-    pbar = tqdm(range(epochs), desc="Training", unit="epoch")
-    for _ in pbar:
-        batch_losses = []
+    with get_progress() as progress:
+        task_id = progress.add_task("Training", total=epochs)
+        for epoch in range(1, epochs + 1):
+            batch_losses = []
 
-        for batch in dataloader:
-            batch = jax.tree.map(jnp.asarray, batch)
-            state, loss = train_step(state, batch)
-            batch_losses.append(loss)
+            for batch in dataloader:
+                batch = jax.tree.map(jnp.asarray, batch)
+                state, loss = train_step(state, batch)
+                batch_losses.append(loss)
 
-        avg_loss = jnp.mean(jnp.array(batch_losses))
-        pbar.set_postfix({"loss": f"{avg_loss:.6f}"})
-        epoch_losses.append(avg_loss)
+            avg_loss = jnp.mean(jnp.array(batch_losses))
+            epoch_losses.append(avg_loss)
+            progress.update(task_id, advance=1, description=f"Training (loss={avg_loss:.6f})")
     epoch_losses = jnp.array(epoch_losses)
     plot_train_loss(epoch_losses)
 
@@ -38,67 +37,58 @@ def train(
 
 
 def sample(
-    dataset: Dataset, 
-    psampler: Partial[Callable], 
-    state: EMATrainState, 
-    rng: jax.random.PRNGKey
+    features: jnp.ndarray,
+    sampler: Callable,
+    state: EMATrainState,
+    species: jnp.ndarray = None,
+    box: jnp.ndarray = None,
+    std: float = None,
 ) -> dict:
 
-    features = dataset[0].get("features", None)
-
-    x, logp = psampler(
+    x, logp = sampler(
         params=state.params,
         apply_fn=state.apply_fn,
         features=features,
-        rng=rng,
+        std=std,
     )
-    samples = {"R": x, "logp": logp, "kT": jnp.broadcast_to(dataset.kT, (x.shape[0],))}
+    samples = {"R": x, "logp": logp}
 
-    species = getattr(dataset, "species", None)
     if species is not None:
-        species = species[0]
         species = jnp.broadcast_to(species, (x.shape[0], *species.shape))
         samples["species"] = species
 
-    box = getattr(dataset, "box", None)
     if box is not None:
-        box = box[0]
         box = jnp.broadcast_to(box, (x.shape[0], *box.shape))
         samples["box"] = box
 
     return samples
 
 
-def reweight(
-    raw: dict,
+def energy_evaluate(
+    data: dict,
     trainer: Any,
     params: FrozenDict,
 ) -> dict:
+    data_eval = dict(data)
+    data_eval["R"] = jnp.squeeze(jnp.asarray(data["R"]))
+    data_eval["U"] = jnp.zeros((data_eval["R"].shape[0],))
+    if "box" in data_eval:
+        data_eval["R"] = data_eval["R"] / data_eval["box"][0, 0, 0]
 
-    samples = raw.copy()
-    kT = samples["kT"][0]
-    logp = samples["logp"]
-    samples["U"] = jnp.zeros((samples["R"].shape[0],))
-    if "box" in raw:
-        samples["R"] = samples["R"] / samples["box"][0, 0, 0]
+    predictions = trainer.predict(dataset=data_eval, params=params, batch_size=500)
+    energy = predictions["U"]
 
-    predictions = trainer.predict(dataset=samples, params=params, batch_size=1000)
-    energies = predictions["U"]
-
-    log_weights = -energies / kT - logp
-    log_weights = log_weights - jax.scipy.special.logsumexp(log_weights)
-
-    samples_and_weights = {
-        **raw,
-        "U": energies,
-        "log_w": log_weights,
-    }
-
-    return samples_and_weights
+    return energy
 
 
-def plots(samples: dict, task: str, ref_dir: str):
-    if "aldp" in task:
-        aldp_plots(samples, task, ref_dir)
-    elif "mb" in task:
-        mb_plots(samples, ref_dir)
+def compute_log_weights(
+    kT: float,
+    data: dict,
+    energy: jnp.ndarray,
+) -> jnp.ndarray:
+
+    logp = data["logp"]
+    logw = -energy / kT - logp
+    logw = logw - jax.scipy.special.logsumexp(logw)
+
+    return logw

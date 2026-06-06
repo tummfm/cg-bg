@@ -1,194 +1,193 @@
-import os
-import sys
-
-for arg in sys.argv:
-    if arg.startswith("device="):
-        os.environ["CUDA_VISIBLE_DEVICES"] = arg.split("=")[1]
-        break
-else:
-    if "CUDA_VISIBLE_DEVICES" not in os.environ:
-        os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.95"
-
-# ruff: noqa: E402
+import logging
 import pickle
 from pathlib import Path
-from typing import Any, Callable
 
-import jax
-import jax.numpy as jnp
-from hydra.conf import HydraConf, JobConf, RunDir
-from hydra.core.hydra_config import HydraConfig
-from hydra_zen import MISSING, builds, store, zen
-from hydra_zen.typing import Partial
-from torch.utils.data import DataLoader, Dataset
+from dotenv import load_dotenv
 
-from cg_bg.flow import cgbg
-from store import (
-    create_dataloader_store,
-    create_dataset_store,
-    create_experiment_store,
-    create_pmf_trainer_store,
-    create_pstate_store,
-    create_sampler_store,
-)
+# Load .env before importing JAX (via cg_bg) so env vars like CUDA_VISIBLE_DEVICES
+# and XLA_PYTHON_CLIENT_MEM_FRACTION take effect at device initialization.
+load_dotenv(override=True)
+
+import time  # noqa: E402
+
+import hydra  # noqa: E402
+from omegaconf import DictConfig, OmegaConf  # noqa: E402
+
+from cg_bg.flow import cgbg, evaluate  # noqa: E402
+from cg_bg.utils import get_console, install_rich_traceback  # noqa: E402
 
 
-def main(
-    device: str,
-    stage: str,
-    task: str,
-    epochs: int,
-    dataset: Dataset,
-    dataloader: DataLoader,
-    pstate: Partial[Callable],
-    psampler: Partial[Callable],
-    seed: int,
-    pmf_ptrainer: Any,
-):
+def _hf_download(repo_id: str, filename: str) -> str:
+    from cg_bg.data.hf import hf_download
+    return hf_download(repo_id, filename)
 
-    print(f"Running on device {device}")
 
-    hydra_cfg = HydraConfig.get()
-    work_dir = Path(hydra_cfg.runtime.cwd)
+OmegaConf.register_new_resolver("hf", _hf_download, use_cache=True)
 
-    rng = jax.random.PRNGKey(seed)
+
+@hydra.main(version_base="1.3", config_path="configs", config_name="main")
+def main(cfg: DictConfig) -> None:
+
+    install_rich_traceback()
+    console = get_console()
+    logger = logging.getLogger(__name__)
+
+    import jax
+
+    rng = jax.random.PRNGKey(cfg.seed)
     rng1, rng2, rng3 = jax.random.split(rng, 3)
-    state = pstate(rng=rng1)
 
-    # train stage
+    with console.status("[green]Initializing components...[/green]"):
+        dataset = hydra.utils.instantiate(cfg.dataset)
+        dataloader = hydra.utils.instantiate(cfg.dataloader)
+        state = hydra.utils.instantiate(cfg.state, rng=rng1)()
+        sampler = hydra.utils.instantiate(cfg.sampler, rng=rng2)
+        pmf_trainer = hydra.utils.instantiate(cfg.pmf_trainer, rng=rng3)()
+        stage = str(cfg.stage)
+
+    final_state = None
+    samples = None
+    species = None
+    box = None
+
+    features = dataset[0].get("features", None)
+    kT = dataset.kT
+    if hasattr(dataset, "species"):
+        species = dataset.species[0]
+    if hasattr(dataset, "box"):
+        box = dataset.box[0]
+    std = getattr(dataset, "std", None)
+
+    flow_params_path = Path("final_params.pkl").resolve()
+    sample_dict_path = Path("proposed_samples.npz").resolve()
+    weights_dict_path = Path("samples_and_weights.npz").resolve()
+
     if "1" in stage or stage == "all":
-        print("-" * 50)
-        print("Stage 1: Training")
-        print("-" * 50)
+        console.rule("[bold cyan]Stage 1: Training[/bold cyan]")
+        logger.info("Stage 1: Training started")
 
-        train_state = cgbg.train(
-            epochs=epochs,
+        train_start = time.perf_counter()
+        final_state = cgbg.train(
+            epochs=cfg.epochs,
             dataloader=dataloader,
             state=state,
         )
+        train_elapsed = time.perf_counter() - train_start
+        train_time = time.strftime("%H:%M:%S", time.gmtime(train_elapsed))
+        console.print(f"[green]Training completed in {train_time}.[/green]")
+        logger.info("Stage 1: Training completed in %.2fs", train_elapsed)
 
-        with open("final_params.pkl", "wb") as f:
-            pickle.dump(train_state.params, f)
-        print("Final train state saved to final_params.pkl")
+        with open(flow_params_path, "wb") as f:
+            pickle.dump(final_state.params, f)
+        console.print(f"[green]Parameters for flow model saved to[/green] {flow_params_path}")
+        logger.info("Stage 1: Flow parameters saved to %s", flow_params_path)
 
-    else:
-        with open("final_params.pkl", "rb") as f:
-            params = pickle.load(f)
-        train_state = state.replace(params=params)
-        print("Final train state loaded from final_params.pkl")
-
-    # sample stage
     if "2" in stage or stage == "all":
-        print("-" * 50)
-        print("Stage 2: Sampling")
-        print("-" * 50)
+        console.rule("[bold cyan]Stage 2: Sampling[/bold cyan]")
+        logger.info("Stage 2: Sampling started")
 
+        if final_state is None:
+            with open(flow_params_path, "rb") as f:
+                params = pickle.load(f)
+            final_state = state.replace(params=params)
+            console.print(f"[green]Parameters for flow model loaded from[/green] {flow_params_path}")
+            logger.info("Stage 2: Flow parameters loaded from %s", flow_params_path)
+
+        sample_start = time.perf_counter()
         samples = cgbg.sample(
-            dataset=dataset,
-            psampler=psampler,
-            state=train_state,
-            rng=rng2,
+            features=features,
+            sampler=sampler,
+            state=final_state,
+            species=species,
+            box=box,
+            std=std,
         )
+        sample_elapsed = time.perf_counter() - sample_start
+        sample_time = time.strftime("%H:%M:%S", time.gmtime(sample_elapsed))
+        console.print(f"[green]Sampling completed in {sample_time}.[/green]")
+        logger.info("Stage 2: Sampling completed in %.2fs", sample_elapsed)
 
-        jnp.savez("proposed_samples.npz", **samples)
-        print("Proposed samples saved to proposed_samples.npz")
+        jax.numpy.savez(sample_dict_path, **samples)
+        console.print(f"[green]Proposals saved to[/green] {sample_dict_path}")
+        logger.info("Stage 2: Proposals saved to %s", sample_dict_path)
 
-    else:
-        samples = jnp.load("proposed_samples.npz", allow_pickle=True)
-        samples = dict(samples)
-        print("Proposed samples loaded from proposed_samples.npz")
-
-    # reweight stage
     if "3" in stage or stage == "all":
-        print("-" * 50)
-        print("Stage 3: Reweighting")
-        print("-" * 50)
+        console.rule("[bold cyan]Stage 3: Energy and Weights[/bold cyan]")
+        logger.info("Stage 3: Energy evaluation started")
 
-        parts = task.split("_")
-        new_task = "_".join(parts[:-1])
-        pmf_params_path = work_dir / "energy_params" / new_task / "best_params.pkl"
+        if samples is None:
+            samples = jax.numpy.load(sample_dict_path, allow_pickle=True)
+            samples = dict(samples)
+            console.print(f"[green]Proposals loaded from[/green] {sample_dict_path}")
+            logger.info("Stage 3: Proposals loaded from %s", sample_dict_path)
 
-        if pmf_params_path.exists():
-            with open(pmf_params_path, "rb") as f:
+        energy_params_path = Path(cfg.energy_params_path).resolve()
+        if energy_params_path.exists():
+            with open(energy_params_path, "rb") as f:
                 pmf_params = pickle.load(f)
-            print(f"PMF parameters loaded from: {pmf_params_path}")
+                if isinstance(pmf_params, dict) and "params" in pmf_params:
+                    pmf_params = pmf_params["params"]
+            console.print(f"[green]Parameters for energy model loaded from:[/green] {energy_params_path}")
+            logger.info("Stage 3: Energy parameters loaded from %s", energy_params_path)
         else:
+            logger.error("Stage 3: Missing PMF parameters at %s", energy_params_path)
             raise FileNotFoundError(
-                f"PMF parameters not found at: {pmf_params_path}. "
-                "Please run the PMF trainer to generate the parameters before reweighting."
+                f"PMF parameters not found at: {energy_params_path}. Please train PMF parameters first."
             )
 
-        pmf_trainer = pmf_ptrainer(rng=rng3)
+        with console.status("[green]Evaluating energy for reference data[/green]"):
+            target_path = Path(cfg.target_path)
+            data_ref = jax.numpy.load(target_path, allow_pickle=True)
+            data_ref = dict(data_ref)
+            energy_ref = cgbg.energy_evaluate(data=data_ref, trainer=pmf_trainer, params=pmf_params)
+            jax.numpy.savez(target_path, **{**data_ref, "U": energy_ref})
+        console.print(f"[green]Energy evaluated and saved for reference data at:[/green] {target_path}")
 
-        samples_and_weights = cgbg.reweight(
-            raw=samples,
-            trainer=pmf_trainer,
-            params=pmf_params,
-        )
-
-        jnp.savez("samples_and_weights.npz", **samples_and_weights)
-        print("Reweighted samples saved to samples_and_weights.npz")
-
-    else:
-        samples_and_weights = jnp.load("samples_and_weights.npz", allow_pickle=True)
-        samples_and_weights = dict(samples_and_weights)
-        print("Reweighted samples loaded from samples_and_weights.npz")
+        energy_start = time.perf_counter()
+        with console.status("[green]Evaluating energy and Computing weights for proposals[/green]"):
+            energy = cgbg.energy_evaluate(data=samples, trainer=pmf_trainer, params=pmf_params)
+            logw = cgbg.compute_log_weights(kT=kT, data=samples, energy=energy)
+            jax.numpy.savez(weights_dict_path, **{**samples, "U": energy, "logw": logw})
+        energy_elapsed = time.perf_counter() - energy_start
+        energy_time = time.strftime("%H:%M:%S", time.gmtime(energy_elapsed))
+        console.print(f"[green]Energy and weights evaluated in {energy_time}.[/green]")
+        console.print(f"[green]Energy and weights evaluated and saved for proposals at:[/green] {weights_dict_path}")
+        logger.info("Stage 3: Energy and weights completed in %.2fs", energy_elapsed)
+        logger.info("Stage 3: Energy + weights saved to %s", weights_dict_path)
 
     if "4" in stage or stage == "all":
-        print("-" * 50)
-        print("Stage 4: Plotting")
-        print("-" * 50)
+        console.rule("[bold cyan]Stage 4: Plotting[/bold cyan]")
+        logger.info("Stage 4: Plotting started")
 
-        cgbg.plots(
-            samples=samples_and_weights,
-            task=task,
-            ref_dir=f"{work_dir}/raw",
-        )
+        for sample_path in [weights_dict_path, sample_dict_path]:
+            if sample_path.exists():
+                console.print(f"[green]Found sample file for plotting:[/green] {sample_path}")
+                break
+        else:
+            raise FileNotFoundError("No samples found for plotting. Please run stages 2 and 3 first.")
 
-        print("Plots saved")
+        plot_target_path = Path(cfg.target_path)
+        if "mb" in cfg.task:
+            evaluate.plot_mb_plots(
+                target_path=plot_target_path,
+                sample_path=sample_path,
+                kT=kT,
+            )
+        elif "ala" in cfg.task:
+            implicit_path = Path(cfg.implicit_path)
+            variant = "_".join(cfg.task.split("_")[:2])
+            evaluate.plot_alanine_plots(
+                variant=variant,
+                target_path=plot_target_path,
+                sample_path=sample_path,
+                implicit_path=implicit_path,
+                clip=cfg.clip,
+                kT=kT,
+                run_bootstrap=cfg.bootstrap,
+                compute_torus_w2=cfg.compute_torus_w2,
+                n_bootstraps=cfg.n_bootstraps,
+            )
 
 
 if __name__ == "__main__":
-    print("Setting up stores and configuration...")
-    create_dataset_store(store)
-    create_dataloader_store(store)
-    create_pstate_store(store)
-    create_sampler_store(store)
-    create_pmf_trainer_store(store)
-
-    BGConfig = builds(
-        main,
-        seed=0,
-        device="",
-        stage="all",
-        task=MISSING,
-        epochs=MISSING,
-        hydra_defaults=[
-            "_self_",
-            {"dataset": MISSING},
-            {"dataloader": MISSING},
-            {"pstate": MISSING},
-            {"psampler": MISSING},
-            {"pmf_ptrainer": MISSING},
-        ],
-        populate_full_signature=True,
-    )
-    store(BGConfig, name="config")
-    create_experiment_store(store, BGConfig)
-
-    run_dir_path = "outputs/${task}/${now:%Y-%m-%d/%H-%M-%S}"
-    store(
-        HydraConf(
-            job=JobConf(
-                chdir=True,
-            ),
-            run=RunDir(dir=run_dir_path),
-        ),
-        name="config",
-        group="hydra",
-    )
-
-    print("Starting experiment...")
-    store.add_to_hydra_store(overwrite_ok=True)
-    zen(main).hydra_main(config_path=None, config_name="config", version_base="1.3")
+    main()

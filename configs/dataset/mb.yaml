@@ -1,0 +1,2 @@
+_target_: cg_bg.data.mb.data.MBDataset
+data_path: ${data_path}

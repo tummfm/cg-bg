@@ -31,6 +31,7 @@ class GraphTransformer(nn.Module):
     dropout: float = 0.0
 
     def _prepare_input(self, x, features, t, concat=True):
+
         if self.clip_time:
             t = jnp.clip(t, self.t0, self.t1)
 
@@ -163,9 +164,7 @@ class GraphTransformer(nn.Module):
             dist = jnp.sum(diff**2, axis=-1, keepdims=True)
             return jnp.concatenate([diff, dist], axis=-1)
         else:
-            raise ValueError("Invalid configuration. I don't think we want to use this")
-            bs, n_nodes, _ = x.shape
-            return jnp.zeros((bs, n_nodes, n_nodes, 1))
+            raise ValueError("Either use_intrinsic_coords or use_distances must be enabled.")
 
 
 class PreNorm(nn.Module):

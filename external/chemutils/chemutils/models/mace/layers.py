@@ -444,4 +444,3 @@ class SymmetricContractionLayer(hk.Module):
             fn_mapped = hk.vmap(fn_mapped, split_rng=False)
 
         return fn_mapped(input, index)
-

@@ -57,6 +57,7 @@ def loss_fn(params: FrozenDict, apply_fn: Callable, batch: dict) -> jnp.ndarray:
         params,
         **batch["input"],
     )
+    # Conditional flow-matching objective: 0.5*||u_t - v_t||^2 dropping the v_t^2 constant.
     loss = jnp.sum(0.5 * ut**2 - ut * vt)
 
     return loss

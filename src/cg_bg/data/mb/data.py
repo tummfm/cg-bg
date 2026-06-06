@@ -7,8 +7,8 @@ from cg_bg.data.mb.preprocess import collate_fn
 
 
 class MBDataset(Dataset):
-    def __init__(self, datapath: str):
-        with np.load(datapath, allow_pickle=True) as data:
+    def __init__(self, data_path: str):
+        with np.load(data_path, allow_pickle=True) as data:
             data = dict(data)
             for key in data.keys():
                 setattr(self, key, data[key])
@@ -17,24 +17,11 @@ class MBDataset(Dataset):
     def __len__(self):
         return len(self.R)
 
-class MBFLOWDataset(MBDataset):
-    def __init__(self, datapath: str):
-        super().__init__(datapath)
-
     def __getitem__(self, idx):
-        return {
-            "x": self.R[idx]
-        }
-
-class MBPMFDataset(MBDataset):
-    def __init__(self, datapath: str):
-        super().__init__(datapath)
-
-    def __getitem__(self, idx):
-        return {
-            "x": self.R[idx],
-            "force": self.F[idx],
-        }
+        item = {"x": self.R[idx]}
+        if hasattr(self, "F"):
+            item["force"] = self.F[idx]
+        return item
 
 
 def get_mb_dataloader(
@@ -42,6 +29,11 @@ def get_mb_dataloader(
     num_samples: int,
     batch_size: int,
     seed: int,
+    flow: bool = True,
+    shuffle: bool = False,
+    drop_last: bool = False,
+    mu: float = 25.0,
+    sigma: float = 25.0,
 ) -> DataLoader:
 
     sampler_rng = np.random.default_rng(seed)
@@ -49,38 +41,20 @@ def get_mb_dataloader(
     indices = sampler_rng.choice(all_indices, num_samples, replace=False)
     sampler = SubsetRandomSampler(indices)
 
-    collate_rng = np.random.default_rng(seed + 1)
-    templated_collate = partial(collate_fn, rng=collate_rng)
+    if flow:
+        collate_rng = np.random.default_rng(seed + 1)
+        templated_collate = partial(collate_fn, rng=collate_rng, sigma=sigma, mu=mu)
+
+    else:
+        templated_collate = None
 
     dataloader = DataLoader(
-        dataset, 
-        batch_size=batch_size, 
-        sampler=sampler, 
-        shuffle=False, 
-        drop_last=True, 
-        collate_fn=templated_collate
-    )
-
-    return dataloader
-
-def get_mb_pmf_dataloader(
-    dataset: Dataset,
-    num_samples: int,
-    batch_size: int,
-    seed: int,
-) -> DataLoader:
-
-    rng = np.random.default_rng(seed)
-    all_indices = np.arange(len(dataset))
-    indices = rng.choice(all_indices, num_samples, replace=False)
-    sampler = SubsetRandomSampler(indices)
-
-    dataloader = DataLoader(
-        dataset=dataset,
+        dataset,
         batch_size=batch_size,
         sampler=sampler,
-        shuffle=False,
-        drop_last=True,
+        shuffle=shuffle,
+        drop_last=drop_last,
+        collate_fn=templated_collate,
     )
 
     return dataloader

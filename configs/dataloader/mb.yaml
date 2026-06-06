@@ -1,0 +1,10 @@
+_target_: cg_bg.data.mb.data.get_mb_dataloader
+dataset: ${dataset}
+num_samples: ${num_samples}
+batch_size: ${batch_size}
+seed: ${seed}
+flow: true
+shuffle: false
+drop_last: false
+mu: 0.0
+sigma: 1.0

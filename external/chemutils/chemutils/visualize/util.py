@@ -37,4 +37,3 @@ def create_subplots(rows, cols):
 
         return new_args
     return decorator
-

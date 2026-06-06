@@ -1,4 +1,3 @@
-
 import pickle
 from typing import Callable
 
@@ -8,7 +7,8 @@ import matplotlib.pyplot as plt
 import optax
 from flax.core import FrozenDict
 from flax.training.train_state import TrainState
-from tqdm import tqdm
+
+from cg_bg.utils import get_console, get_progress
 
 
 @jax.jit
@@ -61,28 +61,32 @@ class MBForceMatching:
     def train(self, epochs):
         state = self.create_train_state()
         epoch_losses = []
-        
-        best_loss = float('inf') 
+
+        best_loss = float("inf")
         self.best_params = None
 
-        pbar = tqdm(range(epochs), desc="Training", unit="epoch")
-        for _ in pbar:
-            batch_losses = []
+        with get_progress() as progress:
+            task_id = progress.add_task("Training", total=epochs)
+            for _ in range(epochs):
+                batch_losses = []
 
-            for batch in self.dataloader:
-                batch = jax.tree.map(jnp.asarray, batch)
-                state, loss = train_step(state, batch)
-                batch_losses.append(loss.item())
+                for batch in self.dataloader:
+                    batch = jax.tree.map(jnp.asarray, batch)
+                    state, loss = train_step(state, batch)
+                    batch_losses.append(float(loss))
 
-            avg_loss = sum(batch_losses) / len(batch_losses)
-            epoch_losses.append(avg_loss)
-            
-            if avg_loss < best_loss:
-                best_loss = avg_loss
-                self.best_params = jax.device_get(state.params)
-                pbar.set_description(f"Training (Best Loss: {best_loss:.6f})")
+                avg_loss = sum(batch_losses) / len(batch_losses)
+                epoch_losses.append(avg_loss)
 
-            pbar.set_postfix({"loss": f"{avg_loss:.6f}"})
+                if avg_loss < best_loss:
+                    best_loss = avg_loss
+                    self.best_params = jax.device_get(state.params)
+
+                progress.update(
+                    task_id,
+                    advance=1,
+                    description=f"Training (loss={avg_loss:.6f}, best={best_loss:.6f})",
+                )
 
         self.state = state
         self.epoch_losses = epoch_losses
@@ -97,7 +101,7 @@ class MBForceMatching:
                 jnp.save(f, params_to_save)
             else:
                 raise ValueError(f"Unsupported file format: {save_format}")
-        print(f"Energy parameters saved to {file_path}")
+        get_console().print(f"[green]Energy parameters saved to[/green] {file_path}")
 
     @staticmethod
     def V(x, y):
@@ -128,7 +132,6 @@ class MBForceMatching:
         energy = self.predict(dataset, params=params)["U"]
         energy -= jnp.min(energy)
 
-        # fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(10, 4))
         fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(10, 4))
         ax1.plot(x_vals, energy, lw=2, color="blue", label="Learned PMF")
         ax1.plot(x_vals, V_eff, lw=2, color="red", linestyle="--", label="True PMF")
@@ -136,10 +139,6 @@ class MBForceMatching:
         ax1.set_ylabel("PMF")
         ax1.set_title("Learned vs True PMF")
         ax1.legend()
-        # ax2.plot(range(1, len(self.epoch_losses) + 1), self.epoch_losses)
-        # ax2.set_xlabel("Epochs")
-        # ax2.set_ylabel("Loss")
-        # ax2.set_title("Training Loss per Epoch")
         plt.tight_layout()
         plt.savefig(file_path)
         plt.close()
@@ -148,6 +147,8 @@ class MBForceMatching:
         dataset = jax.tree.map(jnp.asarray, dataset)
         if params is None:
             params = self.final_params
+        if "params" not in params:
+            params = {"params": params}
         R = dataset["R"]
         n_samples = R.shape[0]
         if batch_size is None:

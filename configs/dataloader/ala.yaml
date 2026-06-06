@@ -1,0 +1,10 @@
+_target_: cg_bg.data.ala.data.get_ala_dataloader_com
+dataset: ${dataset}
+num_samples: ${num_samples}
+batch_size: ${batch_size}
+seed: ${seed}
+shuffle: false
+drop_last: false
+mu: 0.0
+sigma: 1.0
+com_center: true

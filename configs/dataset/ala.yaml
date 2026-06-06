@@ -1,0 +1,4 @@
+_target_: cg_bg.data.ala.data.ALADataset
+data_path: ${data_path}
+feat_type: distinguish
+com_center: ${dataloader.com_center}

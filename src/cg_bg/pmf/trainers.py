@@ -1,3 +1,4 @@
+import logging
 import warnings
 from typing import Any
 
@@ -13,8 +14,10 @@ from torch.utils.data import DataLoader
 from cg_bg.models.rbf_mlp import RBFMLP
 from cg_bg.pmf.train_utils import MBForceMatching
 
+logger = logging.getLogger(__name__)
 
-def get_aldp_trainer(
+
+def get_ala_trainer(
     dataset: dict,
     batch_size: int,
     epochs: int,
@@ -70,11 +73,11 @@ def get_aldp_trainer(
             assert "species" in dynamic_kwargs.keys(), "species not in dynamic_kwargs"
 
             if "mask" not in dynamic_kwargs:
-                print("Add defaul all-positive mask.")
+                logger.warning("No mask provided; using all-positive mask.")
                 dynamic_kwargs["mask"] = jnp.ones(pos.shape[0], dtype=jnp.bool_)
 
             if "box" in dynamic_kwargs:
-                print("Found box in energy kwargs")
+                logger.debug("Found box in energy kwargs")
 
             return gnn_energy_fn(energy_params, pos, neighbor, **dynamic_kwargs)
 
