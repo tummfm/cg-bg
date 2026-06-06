@@ -40,6 +40,7 @@ Preconfigured Hydra experiments are available via Pixi tasks:
 - ala2_cb_ub
 - ala2_ha_b
 - ala2_ha_ub
+- ala3_cb_ub
 - ala3_ha_ub
 - ala6_cb_ub
 
@@ -63,7 +64,7 @@ Stages:
 Example:
 
 ```bash
-pixi run <task_name> device=<gpu_id> stage=234 hydra.run.dir=<output_dir>
+pixi run <task_name> stage=234 hydra.run.dir=<output_dir>
 ```
 
 ## Environment Setup
