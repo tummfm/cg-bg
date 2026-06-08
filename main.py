@@ -58,10 +58,6 @@ def main(cfg: DictConfig) -> None:
         box = dataset.box[0]
     std = getattr(dataset, "std", None)
 
-    flow_params_path = Path("final_params.pkl").resolve()
-    sample_dict_path = Path("proposed_samples.npz").resolve()
-    weights_dict_path = Path("samples_and_weights.npz").resolve()
-
     if "1" in stage or stage == "all":
         console.rule("[bold cyan]Stage 1: Training[/bold cyan]")
         logger.info("Stage 1: Training started")
@@ -77,21 +73,22 @@ def main(cfg: DictConfig) -> None:
         console.print(f"[green]Training completed in {train_time}.[/green]")
         logger.info("Stage 1: Training completed in %.2fs", train_elapsed)
 
-        with open(flow_params_path, "wb") as f:
+        with open("flow_params.pkl", "wb") as f:
             pickle.dump(final_state.params, f)
-        console.print(f"[green]Parameters for flow model saved to[/green] {flow_params_path}")
-        logger.info("Stage 1: Flow parameters saved to %s", flow_params_path)
+        console.print("[green]Flow parameters saved to flow_params.pkl[/green]")
+        logger.info("Stage 1: Flow parameters saved to flow_params.pkl")
 
     if "2" in stage or stage == "all":
         console.rule("[bold cyan]Stage 2: Sampling[/bold cyan]")
         logger.info("Stage 2: Sampling started")
 
         if final_state is None:
-            with open(flow_params_path, "rb") as f:
+            fp = "flow_params.pkl" if Path("flow_params.pkl").exists() else cfg.flow_params_path
+            with open(fp, "rb") as f:
                 params = pickle.load(f)
             final_state = state.replace(params=params)
-            console.print(f"[green]Parameters for flow model loaded from[/green] {flow_params_path}")
-            logger.info("Stage 2: Flow parameters loaded from %s", flow_params_path)
+            console.print(f"[green]Flow parameters loaded from[/green] {fp}")
+            logger.info("Stage 2: Flow parameters loaded from %s", fp)
 
         sample_start = time.perf_counter()
         samples = cgbg.sample(
@@ -107,19 +104,19 @@ def main(cfg: DictConfig) -> None:
         console.print(f"[green]Sampling completed in {sample_time}.[/green]")
         logger.info("Stage 2: Sampling completed in %.2fs", sample_elapsed)
 
-        jax.numpy.savez(sample_dict_path, **samples)
-        console.print(f"[green]Proposals saved to[/green] {sample_dict_path}")
-        logger.info("Stage 2: Proposals saved to %s", sample_dict_path)
+        jax.numpy.savez("proposed_samples.npz", **samples)
+        console.print("[green]Proposals saved to proposed_samples.npz[/green]")
+        logger.info("Stage 2: Proposals saved to proposed_samples.npz")
 
     if "3" in stage or stage == "all":
         console.rule("[bold cyan]Stage 3: Energy and Weights[/bold cyan]")
         logger.info("Stage 3: Energy evaluation started")
 
         if samples is None:
-            samples = jax.numpy.load(sample_dict_path, allow_pickle=True)
-            samples = dict(samples)
-            console.print(f"[green]Proposals loaded from[/green] {sample_dict_path}")
-            logger.info("Stage 3: Proposals loaded from %s", sample_dict_path)
+            sp = "proposed_samples.npz" if Path("proposed_samples.npz").exists() else cfg.samples_path
+            samples = dict(jax.numpy.load(sp, allow_pickle=True))
+            console.print(f"[green]Proposals loaded from[/green] {sp}")
+            logger.info("Stage 3: Proposals loaded from %s", sp)
 
         energy_params_path = Path(cfg.energy_params_path).resolve()
         if energy_params_path.exists():
@@ -147,24 +144,24 @@ def main(cfg: DictConfig) -> None:
         with console.status("[green]Evaluating energy and Computing weights for proposals[/green]"):
             energy = cgbg.energy_evaluate(data=samples, trainer=pmf_trainer, params=pmf_params)
             logw = cgbg.compute_log_weights(kT=kT, data=samples, energy=energy)
-            jax.numpy.savez(weights_dict_path, **{**samples, "U": energy, "logw": logw})
+            jax.numpy.savez("samples_and_weights.npz", **{**samples, "U": energy, "logw": logw})
         energy_elapsed = time.perf_counter() - energy_start
         energy_time = time.strftime("%H:%M:%S", time.gmtime(energy_elapsed))
         console.print(f"[green]Energy and weights evaluated in {energy_time}.[/green]")
-        console.print(f"[green]Energy and weights evaluated and saved for proposals at:[/green] {weights_dict_path}")
+        console.print("[green]Energy and weights saved to samples_and_weights.npz[/green]")
         logger.info("Stage 3: Energy and weights completed in %.2fs", energy_elapsed)
-        logger.info("Stage 3: Energy + weights saved to %s", weights_dict_path)
+        logger.info("Stage 3: Energy + weights saved to samples_and_weights.npz")
 
     if "4" in stage or stage == "all":
         console.rule("[bold cyan]Stage 4: Plotting[/bold cyan]")
         logger.info("Stage 4: Plotting started")
 
-        for sample_path in [weights_dict_path, sample_dict_path]:
+        for sample_path in [Path("samples_and_weights.npz"), Path("proposed_samples.npz")]:
             if sample_path.exists():
-                console.print(f"[green]Found sample file for plotting:[/green] {sample_path}")
                 break
         else:
-            raise FileNotFoundError("No samples found for plotting. Please run stages 2 and 3 first.")
+            sample_path = Path(cfg.samples_path)
+        console.print(f"[green]Found sample file for plotting:[/green] {sample_path}")
 
         plot_target_path = Path(cfg.target_path)
         if "mb" in cfg.task:
