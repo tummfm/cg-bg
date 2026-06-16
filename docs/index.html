@@ -134,7 +134,7 @@
   <!-- Showcase 1 -->
   <section class="section trajectory-section">
     <div class="container is-max-widescreen">
-      <h2 class="title is-3 has-text-centered">CG-BGs capture solven-mediated interactions in highly reduced representations</h2>
+      <h2 class="title is-3 has-text-centered">CG-BGs capture solvent-mediated interactions in highly reduced representations</h2>
       <div class="content">
         <p>
           Operating directly in a coarse-grained space, CG-BGs implicitly capture solvent-mediated
@@ -142,7 +142,7 @@
           implicit-solvent models while avoiding the computational cost of explicit-solvent
           simulations. The animation below illustrates this for the Core Beta
           representation: CG-BG samples (left) accumulate into the equilibrium distribution as the
-          atomistic reference trajectory (right) propogates, both converging to the same free-energy
+          atomistic reference trajectory (right) propagates, both converging to the same free-energy
           landscape.
         </p>
       </div>
@@ -268,18 +268,14 @@
             </tr>
           </thead>
           <tbody>
-            <tr class="results-grouphead"><td colspan="4">Continuous Normalizing Flow</td></tr>
             <tr><td>Training</td><td>0.45 h</td><td>0.80 h</td><td>2.55 h</td></tr>
             <tr><td>Inference</td><td>0.95 min</td><td>3.78 min</td><td>14.91 min</td></tr>
-            <tr class="results-grouphead"><td colspan="4">PMF network</td></tr>
-            <tr><td>Training</td><td>1.88 h</td><td>4.11 h</td><td>&mdash;</td></tr>
-            <tr><td>Inference</td><td>0.66 s</td><td>0.72 s</td><td>&mdash;</td></tr>
           </tbody>
         </table>
         <p class="results-footnote">
           Training and inference time on alanine dipeptide; inference is measured over 10<sup>4</sup>
           samples.<br>
-          <sup>&dagger;</sup> All Atom generates the full solute configuration without explicit solvent; the PMF network operates only on coarse-grained mappings.
+          <sup>&dagger;</sup> All Atom generates the full solute configuration without explicit solvent.
         </p>
       </div>
     </div>
@@ -339,7 +335,7 @@
             <p>
               This page was built using the
               <a href="https://github.com/eliahuhorwitz/Academic-project-page-template" target="_blank">Academic Project Page Template</a>,
-              adopted from the <a href="https://nerfies.github.io" target="_blank">Nerfies</a> project page.
+              adapted from the <a href="https://nerfies.github.io" target="_blank">Nerfies</a> project page.
               Licensed under
               <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0</a>.
             </p>
