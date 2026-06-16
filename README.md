@@ -2,6 +2,7 @@
 
 # Coarse-Grained Boltzmann Generators
 
+<a href="https://tummfm.github.io/cg-bg/"><img src="https://img.shields.io/badge/Project-Page-lightgrey?labelColor=4b6cb7" alt="Project Page"></a>
 <a href="https://arxiv.org/abs/2602.10637"><img src="https://img.shields.io/badge/arXiv-2602.10637-lightgrey?labelColor=b31b1b" alt="arXiv"></a>
 <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-lightgrey?labelColor=yellow" alt="License"></a>
 <a href="https://prefix.dev"><img src="https://img.shields.io/badge/Pixi-Env-lightgrey?labelColor=blue" alt="Pixi"></a>

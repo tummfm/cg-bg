@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="title" content="Coarse-Grained Boltzmann Generators">
+  <meta name="description" content="Coarse-Grained Boltzmann Generators (CG-BG): exact equilibrium sampling in coarse-grained molecular representations, powered by JAX.">
+  <meta name="keywords" content="Boltzmann generators, coarse-graining, equilibrium sampling, normalizing flows, molecular dynamics, JAX, free energy">
+  <meta name="author" content="Weilong Chen, Bojun Zhao, Jan Eckwert, Julija Zavadlav">
+  <meta name="robots" content="index, follow">
+  <meta name="language" content="English">
+
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="CG-BG">
+  <meta property="og:title" content="Coarse-Grained Boltzmann Generators">
+  <meta property="og:description" content="Boltzmann Generators for exact equilibrium sampling in coarse-grained representations, powered by JAX.">
+  <meta property="og:url" content="https://tummfm.github.io/cg-bg/">
+  <meta property="og:image" content="static/images/overview.png">
+
+  <meta name="citation_title" content="Coarse-Grained Boltzmann Generators">
+  <meta name="citation_author" content="Chen, Weilong">
+  <meta name="citation_author" content="Zhao, Bojun">
+  <meta name="citation_author" content="Eckwert, Jan">
+  <meta name="citation_author" content="Zavadlav, Julija">
+  <meta name="citation_publication_date" content="2026">
+  <meta name="citation_arxiv_id" content="2602.10637">
+
+  <title>Coarse-Grained Boltzmann Generators</title>
+  <link rel="icon" type="image/png" href="static/images/hero_ramachandran.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://ajax.googleapis.com">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+
+  <link rel="stylesheet" href="static/css/bulma.min.css">
+  <link rel="stylesheet" href="static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="static/css/index.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script defer src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="static/js/fontawesome.all.min.js"></script>
+  <script defer src="static/js/bulma-carousel.min.js"></script>
+  <script defer src="static/js/bulma-slider.min.js"></script>
+  <script defer src="static/js/index.js"></script>
+</head>
+<body>
+
+  <button class="scroll-to-top" onclick="scrollToTop()" title="Scroll to top" aria-label="Scroll to top">
+    <i class="fas fa-chevron-up"></i>
+  </button>
+
+  <main id="main-content">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-widescreen">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-1 publication-title">
+              Coarse-Grained Boltzmann Generators
+            </h1>
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">Weilong Chen<sup style="font-size:0.6em;">*,1</sup>,</span>
+              <span class="author-block">Bojun Zhao<sup style="font-size:0.6em;">*,1</sup>,</span>
+              <span class="author-block">Jan Eckwert<sup style="font-size:0.6em;">1</sup>,</span>
+              <span class="author-block">Julija Zavadlav<sup style="font-size:0.6em;">1,2</sup></span>
+            </div>
+            <div class="is-size-6 publication-authors" style="margin-top:0.75rem;">
+              <span class="author-block"><sup>1</sup> Professorship of Multiscale Modeling of Fluid Materials, Technical University of Munich, Germany</span><br>
+              <span class="author-block"><sup>2</sup> Atomistic Modeling Center, Munich Data Science Institute, Technical University of Munich</span>
+            </div>
+            <div class="is-size-7 publication-authors" style="margin-top:0.4rem;color:#666;">
+              <span class="author-block"><sup>*</sup>Equal contribution, random order</span>
+            </div>
+            <div class="is-size-4 publication-authors" style="margin-top:0.6rem;">
+              <span class="author-block"><b>International Conference on Machine Learning (ICML) 2026</b></span>
+            </div>
+
+            <div class="column has-text-centered">
+              <div class="publication-links">
+                <span class="link-block">
+                  <a href="https://arxiv.org/abs/2602.10637" target="_blank"
+                     class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><i class="ai ai-arxiv"></i></span>
+                    <span>arXiv</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="https://github.com/tummfm/cg-bg" target="_blank"
+                     class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><i class="fab fa-github"></i></span>
+                    <span>Code</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="https://huggingface.co/datasets/bojuntum/CGPeptides" target="_blank"
+                     class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">&#129303;</span>
+                    <span>Dataset</span>
+                  </a>
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Abstract -->
+  <section class="section hero is-light">
+    <div class="container is-max-widescreen">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3">Abstract</h2>
+          <div class="content has-text-justified">
+            <p>
+              Sampling equilibrium molecular configurations from the Boltzmann distribution is a longstanding challenge. Boltzmann Generators (BGs) address this by combining exact-likelihood generative models with importance sampling, but practical scalability is limited. Meanwhile, coarse-grained surrogates enable the modeling of larger systems by reducing effective dimensionality, yet often lack a reweighting procedure required to ensure asymptotically correct statistics. In this work, we propose Coarse-Grained Boltzmann Generators (CG-BGs), a framework for reduced-order generative modeling with importance sampling in coarse-grained coordinate space. CG-BGs generate samples using a flow-based model and reweight them using a learned potential of mean force (PMF). We show that the PMF can be learned from rapidly converged trajectories via enhanced sampling force matching. Experiments demonstrate that CG-BGs capture solvent-mediated interactions in highly reduced representations while substantially reducing computational cost relative to atomistic BGs, providing a practical route toward equilibrium sampling of larger molecular systems.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Showcase 1 -->
+  <section class="section trajectory-section">
+    <div class="container is-max-widescreen">
+      <h2 class="title is-3 has-text-centered">CG-BGs capture solven-mediated interactions in highly reduced representations</h2>
+      <div class="content">
+        <p>
+          Operating directly in a coarse-grained space, CG-BGs implicitly capture solvent-mediated
+          interactions through the learned PMF, attaining an accuracy that surpasses classical
+          implicit-solvent models while avoiding the computational cost of explicit-solvent
+          simulations. The animation below illustrates this for the Core Beta
+          representation: CG-BG samples (left) accumulate into the equilibrium distribution as the
+          atomistic reference trajectory (right) propogates, both converging to the same free-energy
+          landscape.
+        </p>
+      </div>
+      <div class="trajectory-showcase">
+        <div class="trajectory-frame">
+          <video autoplay loop muted playsinline style="width:100%;display:block;">
+            <source src="static/ala2_cb_ub_animation.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Model Overview -->
+  <section class="section">
+    <div class="container is-max-widescreen">
+      <div class="trajectory-header">
+        <h2 class="title is-3 has-text-centered">Model Overview</h2>
+        <div class="content has-text-justified">
+          <p>
+          CG-BG comprises two components. A flow-based model generates proposal configurations in
+          the coarse-grained coordinate space while providing their densities q<sub>&theta;</sub>(R).
+          A separate PMF network learns the free energy U<sub>&eta;</sub>(R) from rapidly converged
+          biased trajectories. At inference, the proposal density and the learned PMF are combined to
+          reweight each sample by &omega;(R) &prop; exp(&minus;&beta;U<sub>&eta;</sub>(R)) /
+          q<sub>&theta;</sub>(R), recovering the target equilibrium distribution and enabling
+          unbiased estimation of thermodynamic observables.
+          </p>
+        </div>
+      </div>
+      <div class="figure-frame">
+        <img src="static/images/overview.png" alt="CG-BG on the Mueller-Brown potential" />
+      </div>
+      <!-- <div class="results-caption-row">
+        <p class="results-fig-caption"><strong>Illustrative example.</strong> Joint distribution recovered on the M&uuml;ller-Brown model potential. (Placeholder figure - a method schematic will be added.)</p>
+      </div> -->
+    </div>
+  </section>
+
+  <!-- Results 1: Recovering equilibrium distributions -->
+  <section class="section">
+    <div class="container is-max-widescreen">
+      <h2 class="title is-3 has-text-centered">Recovering Equilibrium Distributions from Biased and Unbiased Data</h2>
+      <div class="content has-text-justified" style="margin-bottom:2rem;">
+        <p>
+        After importance reweighting, CG-BG recovers the equilibrium free-energy landscapes of the
+        alanine peptides from flow models trained on either biased or unbiased trajectories, in close
+        agreement with explicit-solvent MD. Across all systems it surpasses the classical
+        implicit-solvent baselines that upper-bound atomistic Boltzmann Generators.
+        </p>
+      </div>
+
+      <div class="table-container results-table-wrap">
+        <table class="table is-fullwidth has-text-centered results-table">
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>JS divergence (&darr;)</th>
+              <th>PMF error (&darr;)</th>
+              <th>ESS (&uarr;)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="results-grouphead"><td colspan="4">Alanine dipeptide</td></tr>
+            <tr class="results-subhead"><td colspan="4">CG-BG (reweighted)</td></tr>
+            <tr><td>Heavy Atom</td><td>0.0048(1)</td><td>0.2005(63)</td><td>0.5112(4)</td></tr>
+            <tr><td>Heavy Atom (Biased)</td><td>0.0063(1)</td><td>0.2277(66)</td><td>0.4115(4)</td></tr>
+            <tr><td>Core Beta</td><td>0.0052(1)</td><td>0.2210(65)</td><td>0.5528(4)</td></tr>
+            <tr><td>Core Beta (Biased)</td><td>0.0057(1)</td><td>0.2093(58)</td><td>0.4818(4)</td></tr>
+            <tr class="results-subhead"><td colspan="4">Implicit solvent (GB)<sup>&dagger;</sup></td></tr>
+            <tr><td>OBC1</td><td>0.0157(2)</td><td>0.3709(92)</td><td>&mdash;</td></tr>
+            <tr><td>OBC2</td><td>0.0182(2)</td><td>0.4028(95)</td><td>&mdash;</td></tr>
+
+            <tr class="results-grouphead"><td colspan="4">Alanine tripeptide</td></tr>
+            <tr class="results-subhead"><td colspan="4">CG-BG (reweighted)</td></tr>
+            <tr><td>Heavy Atom</td><td>0.0056(1)</td><td>0.1957(52)</td><td>0.3201(4)</td></tr>
+            <tr><td>Core Beta</td><td>0.0060(1)</td><td>0.2112(51)</td><td>0.4212(5)</td></tr>
+            <tr class="results-subhead"><td colspan="4">Implicit solvent (GB)<sup>&dagger;</sup></td></tr>
+            <tr><td>OBC2</td><td>0.0932(3)</td><td>1.0274(65)</td><td>&mdash;</td></tr>
+
+            <tr class="results-grouphead"><td colspan="4">Alanine hexapeptide</td></tr>
+            <tr class="results-subhead"><td colspan="4">CG-BG (reweighted)</td></tr>
+            <tr><td>Core Beta</td><td>0.0100(1)</td><td>0.3646(81)</td><td>0.1231(3)</td></tr>
+            <tr class="results-subhead"><td colspan="4">Implicit solvent (GB)<sup>&dagger;</sup></td></tr>
+            <tr><td>OBC2</td><td>0.1652(3)</td><td>1.8401(70)</td><td>&mdash;</td></tr>
+          </tbody>
+        </table>
+        <p class="results-footnote">
+          <sup>&dagger;</sup> GB: generalized Born implicit-solvent model; OBC1/OBC2 are its two parameterizations.
+        </p>
+      </div>
+
+      <div class="figure-frame" style="margin-top:2rem;">
+        <img src="static/images/results.png" alt="Free-energy comparison for the alanine peptide series" />
+      </div>
+      <div class="results-caption-row" style="grid-template-columns:1fr;text-align:center;">
+        <p class="results-fig-caption"><strong>Ramachandran free-energy maps.</strong> Across alanine di-, tri-, and hexapeptide (rows), reweighted CG-BG under the Heavy Atom and Core Beta mappings matches the explicit-solvent MD reference, whereas the implicit-solvent baseline deviates.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Results 2: Coarse-graining resolution -->
+  <section class="section">
+    <div class="container is-max-widescreen">
+      <h2 class="title is-3 has-text-centered">Effect of Coarse-Graining Resolution on Accuracy and Efficiency</h2>
+      <div class="content has-text-justified" style="margin-bottom:2rem;">
+        <p>
+        Reducing the resolution from Heavy Atom to Core Beta raises the effective sample size and
+        sharply lowers training and inference cost, at the cost of slightly less accurate
+        post-reweighting estimates. Resolution thus trades representational fidelity against
+        statistical and computational efficiency.
+        </p>
+      </div>
+
+      <div class="table-container results-table-wrap">
+        <table class="table is-fullwidth has-text-centered results-table">
+          <thead>
+            <tr>
+              <th>Stage</th>
+              <th>Core Beta</th>
+              <th>Heavy Atom</th>
+              <th>All Atom<sup>&dagger;</sup></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="results-grouphead"><td colspan="4">Continuous Normalizing Flow</td></tr>
+            <tr><td>Training</td><td>0.45 h</td><td>0.80 h</td><td>2.55 h</td></tr>
+            <tr><td>Inference</td><td>0.95 min</td><td>3.78 min</td><td>14.91 min</td></tr>
+            <tr class="results-grouphead"><td colspan="4">PMF network</td></tr>
+            <tr><td>Training</td><td>1.88 h</td><td>4.11 h</td><td>&mdash;</td></tr>
+            <tr><td>Inference</td><td>0.66 s</td><td>0.72 s</td><td>&mdash;</td></tr>
+          </tbody>
+        </table>
+        <p class="results-footnote">
+          Training and inference time on alanine dipeptide; inference is measured over 10<sup>4</sup>
+          samples.<br>
+          <sup>&dagger;</sup> All Atom generates the full solute configuration without explicit solvent; the PMF network operates only on coarse-grained mappings.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Results 3: Simulation-free PMF evaluation -->
+  <section class="section">
+    <div class="container is-max-widescreen">
+      <h2 class="title is-3 has-text-centered">Simulation-Free Evaluation of Learned PMFs</h2>
+      <div class="content has-text-justified" style="margin-bottom:2rem;">
+        <p>
+        A single set of CG-BG proposals can be reused to benchmark candidate PMFs by reweighting,
+        without any additional simulation. The PMF learned from rapidly converged biased data
+        (PMF<sub>B</sub>) recovers the reference equilibrium, whereas the one learned from unbiased
+        data (PMF<sub>U</sub>) does not.
+        </p>
+      </div>
+
+      <div class="figure-frame" style="margin-top:2rem;">
+        <img src="static/images/ala2_pmf_comparison.png" alt="Simulation-free comparison of learned PMFs for alanine dipeptide" />
+      </div>
+      <div class="results-caption-row" style="grid-template-columns:1fr;text-align:center;">
+        <p class="results-fig-caption"><strong>Simulation-free PMF benchmarking.</strong> Reweighting a single set of CG-BG proposals under potentials trained on unbiased (PMF<sub>U</sub>) and rapidly converged biased (PMF<sub>B</sub>) data. PMF<sub>B</sub> matches the explicit-solvent MD reference, while PMF<sub>U</sub> misestimates the metastable populations along &phi;.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- BibTeX -->
+  <section class="section" id="BibTeX">
+    <div class="container is-max-desktop content">
+      <div class="bibtex-header">
+        <h2 class="title">BibTeX</h2>
+        <button class="copy-bibtex-btn" onclick="copyBibTeX()" title="Copy BibTeX to clipboard">
+          <i class="fas fa-copy"></i>
+          <span class="copy-text">Copy</span>
+        </button>
+      </div>
+      <pre id="bibtex-code"><code>@misc{chen2026coarsegrainedboltzmanngenerators,
+      title={Coarse-Grained Boltzmann Generators},
+      author={Weilong Chen and Bojun Zhao and Jan Eckwert and Julija Zavadlav},
+      year={2026},
+      eprint={2602.10637},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2602.10637},
+}</code></pre>
+    </div>
+  </section>
+
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="columns is-centered">
+        <div class="column is-8">
+          <div class="content has-text-centered">
+            <p>
+              This page was built using the
+              <a href="https://github.com/eliahuhorwitz/Academic-project-page-template" target="_blank">Academic Project Page Template</a>,
+              adopted from the <a href="https://nerfies.github.io" target="_blank">Nerfies</a> project page.
+              Licensed under
+              <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
