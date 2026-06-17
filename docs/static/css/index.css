@@ -813,6 +813,18 @@ a:focus {
   white-space: nowrap;
 }
 
+.best-value {
+  display: inline-block;
+  color: #047857;
+  font-size: 1.04em;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0.16rem 0.34rem;
+  border-radius: 999px;
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+}
+
 .results-highlight td {
   background: #f0fdf4 !important;
   color: #166534 !important;
@@ -879,6 +891,5 @@ a:focus {
     box-shadow: none !important;
   }
 }
-
 
 

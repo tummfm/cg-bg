@@ -5,13 +5,9 @@
 <a href="https://tummfm.github.io/cg-bg/"><img src="https://img.shields.io/badge/Project-Page-lightgrey?labelColor=4b6cb7" alt="Project Page"></a>
 <a href="https://arxiv.org/abs/2602.10637"><img src="https://img.shields.io/badge/arXiv-2602.10637-lightgrey?labelColor=b31b1b" alt="arXiv"></a>
 <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-lightgrey?labelColor=yellow" alt="License"></a>
-<a href="https://prefix.dev"><img src="https://img.shields.io/badge/Pixi-Env-lightgrey?labelColor=blue" alt="Pixi"></a>
-<a href="https://hydra.cc/"><img src="https://img.shields.io/badge/Hydra-1.3-lightgrey?labelColor=1f77b4" alt="Hydra"></a>
-<a href="https://github.com/jax-ml/jax"><img src="https://img.shields.io/badge/JAX-0.4.x-lightgrey?labelColor=orange" alt="JAX"></a>
-<a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.11-lightgrey?labelColor=3776AB" alt="Python"></a>
 
 <p align="center">
-  <em>Boltzmann Generators for exact equilibrium sampling in coarse-grained representations, powered by JAX.</em>
+  <em>Boltzmann Generators for asymptotically exact equilibrium sampling in coarse-grained representations, powered by JAX.</em>
 </p>
 
 ---
@@ -22,6 +18,12 @@
 This repository implements Coarse-Grained Boltzmann Generators (CG-BGs) in JAX.
 The codebase uses Hydra for configuration and experiment launching, Pixi for
 reproducible environments, and Rich for terminal progress and status displays.
+
+## Abstract
+
+Sampling equilibrium molecular configurations from the Boltzmann distribution is a longstanding challenge. Boltzmann Generators (BGs) address this by combining exact-likelihood generative models with importance sampling, but practical scalability is limited. Meanwhile, coarse-grained surrogates enable the modeling of larger systems by reducing effective dimensionality, yet often lack a reweighting procedure required to ensure asymptotically correct statistics. In this work, we propose Coarse-Grained Boltzmann Generators (CG-BGs), a framework for reduced-order generative modeling with importance sampling in coarse-grained coordinate space. CG-BGs generate samples using a flow-based model and reweight them using a learned potential of mean force (PMF). We show that the PMF can be learned from rapidly converged trajectories via enhanced sampling force matching. Experiments demonstrate that CG-BGs capture solvent-mediated interactions in highly reduced representations while substantially reducing computational cost relative to atomistic BGs, providing a practical route toward equilibrium sampling of larger molecular systems.
+
+![CG-BG overview](docs/static/images/overview.png)
 
 ## Install
 
@@ -77,22 +79,22 @@ cp .env.example .env
 ```
 
 The minimum required setting is `SCRATCH_DIR` — the local directory where downloaded
-data and outputs are cached. All other variables are optional for the default dataset.
+data, pretrained weights, and outputs are cached. All other variables are optional for the default Hugging Face repository.
 
 | Variable | Required | Description |
 |---|---|---|
-| `SCRATCH_DIR` | Yes | Local cache directory for data and outputs |
-| `HF_TOKEN` | No | Only needed for private/gated HF repos or uploading data |
+| `SCRATCH_DIR` | Yes | Local cache directory for data, pretrained weights, and outputs |
+| `HF_TOKEN` | No | Only needed for private/gated HF repos or uploading files |
 | `HF_REPO_ID` | No | Defaults to `bojuntum/CGPeptides` (public) |
 
-## Data from Hugging Face
+## Data and Pretrained Weights from Hugging Face
 
-All experiment configs download data automatically from the
-[`bojuntum/CGPeptides`](https://huggingface.co/datasets/bojuntum/CGPeptides) dataset on
-the Hugging Face Hub. No manual download or token is needed — the files are fetched on
+All experiment configs download data and pretrained weights automatically from
+[`bojuntum/CGPeptides`](https://huggingface.co/datasets/bojuntum/CGPeptides) on the
+Hugging Face Hub. No manual download or token is needed — the files are fetched on
 first run and cached under `$SCRATCH_DIR`.
 
-To use a different dataset repo, set `HF_REPO_ID` in `.env`:
+To use a different Hugging Face repo, set `HF_REPO_ID` in `.env`:
 
 ```bash
 HF_REPO_ID="your-username/your-dataset"
@@ -103,13 +105,10 @@ HF_REPO_ID="your-username/your-dataset"
 If you use CG-BGs, please cite:
 
 ```bibtex
-@misc{chen2026coarsegrainedboltzmanngenerators,
-      title={Coarse-Grained Boltzmann Generators},
-      author={Weilong Chen and Bojun Zhao and Jan Eckwert and Julija Zavadlav},
-      year={2026},
-      eprint={2602.10637},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2602.10637},
+@article{chen2026cgbg,
+  title={Coarse-Grained Boltzmann Generators},
+  author={Chen, Weilong and Zhao, Bojun and Eckwert, Jan and Zavadlav, Julija},
+  journal={arXiv preprint arXiv:2602.10637},
+  year={2026}
 }
 ```
